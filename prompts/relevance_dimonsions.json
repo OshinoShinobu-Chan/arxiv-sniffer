@@ -1,0 +1,24 @@
+{
+    "dimensional_scores": {
+        "tech_semantic_match": {
+            "weight": 0.5,
+            "name": "技术重重合度",
+            "description": "论文中使用的具体技术术语、模型名称、数据集、算法编号与主题词的匹配程度。论文是否直接讨论了与研究主题相关的核心技术？"
+        },
+        "method_relevance": {
+            "weight": 0.2,
+            "name": "方法论的直接关联性",
+            "description": "论文提出的方法是否可以被直接应用于解决该主题下的核心问题？该方法是否针对该主题的已知痛点？"
+        },
+        "experiment_suitability": {
+            "weight": 0.2,
+            "name": "实验设置的适配性",
+            "description": "论文的实验环境、数据集、评估指标是否是该主题公认的标准？实验是否验证了在该主题场景下的有效性？"
+        },
+        "code_availability": {
+            "weight": 0.1,
+            "name": "代码与数据的可获得性",
+            "description": "论文是否提供了开源代码、预训练模型或公开数据集？这对于快速跟进和应用至关重要。"
+        }
+    }
+}

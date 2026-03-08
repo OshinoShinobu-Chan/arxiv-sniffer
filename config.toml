@@ -1,0 +1,51 @@
+[crawler]
+interval_secs = 10
+timeout_secs = 120
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0"
+
+[prompts]
+dir = "prompts"
+
+[filter]
+relevance_threshold = 85
+eval_concurrency = 16
+
+[ai]
+
+[ai.models."deepseek-chat"]
+provider = "deepseek"
+endpoint = "https://api.deepseek.com/chat/completions"
+system_prompt = "You are a helpful assistant"
+timeout_secs = 60
+
+[ai.models."deepseek-chat".request]
+model = "deepseek-chat"
+thinking_type = "disabled"
+frequency_penalty = 0.0
+max_tokens = 4096
+presence_penalty = 0.0
+response_format_type = "text"
+stream = false
+temperature = 1.0
+top_p = 1.0
+tool_choice = "none"
+logprobs = false
+
+[ai.models."deepseek-reasoner"]
+provider = "deepseek"
+endpoint = "https://api.deepseek.com/chat/completions"
+system_prompt = "You are a helpful assistant"
+timeout_secs = 300
+
+[ai.models."deepseek-reasoner".request]
+model = "deepseek-reasoner"
+thinking_type = "enabled"
+frequency_penalty = 0.0
+max_tokens = 32768
+presence_penalty = 0.0
+response_format_type = "text"
+stream = false
+temperature = 1.0
+top_p = 1.0
+tool_choice = "none"
+logprobs = false
