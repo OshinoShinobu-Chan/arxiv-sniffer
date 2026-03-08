@@ -1,5 +1,7 @@
 # ArXiv Sniffer
 
+[English](./README-en.md)
+
 ## 简介
 
 这个项目是一个基于大模型的，筛选和总结arXiv catchup（arXiv的每日订阅）论文的程序。
