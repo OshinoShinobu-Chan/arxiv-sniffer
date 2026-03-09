@@ -9,16 +9,19 @@ pub use logger::{debug, error, info, warn};
 
 use crate::ai_api::AiClient;
 use crate::ai_api::deepseek::DeepSeekClient;
+use crate::arxiv::{ArxivPaperEntry, render_mkdocs_page};
 use crate::config::AppConfig;
 use crate::crawler::ArxivCrawler;
 use crate::filter::{TopicFilter, load_relevance_dimensions, load_relevance_template};
 use chrono::{DateTime, NaiveDate, Utc};
+use serde::Serialize;
+use std::collections::HashMap;
+use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
 const CATCHUP_DATE: &str = "2026-03-06";
-const TOPIC: &str = "多个Agent相互协作的Agentic AI系统有关的研究";
 const DEFAULT_MODEL_NAME: &str = "deepseek-chat";
 const DEEPSEEK_API_KEY_ENV: &str = "DEEPSEEK_API_KEY";
 
@@ -43,9 +46,44 @@ impl Drop for ScopeTimer {
     }
 }
 
-fn demo_topic_relevance_from_catchup(config: &AppConfig) {
-    let _timer = ScopeTimer::new("demo_topic_relevance_from_catchup");
-    info("start topic relevance demo from arXiv catchup");
+#[derive(Serialize)]
+struct FilterResultsDump {
+    generated_at_utc: String,
+    catchup_date: String,
+    model_name: String,
+    relevance_threshold: f64,
+    topics: Vec<TopicDump>,
+}
+
+#[derive(Serialize)]
+struct TopicDump {
+    topic_name: String,
+    topic_description: String,
+    total_candidates: usize,
+    matched_count: usize,
+    results: Vec<PaperDump>,
+}
+
+#[derive(Serialize)]
+struct PaperDump {
+    id: String,
+    title: String,
+    authors: Vec<String>,
+    abstract_text: String,
+    overall_score: f64,
+    dimensional_scores: HashMap<String, u8>,
+    dimensional_reasons: HashMap<String, String>,
+}
+
+fn run_catchup_filter_and_render(config: &AppConfig) {
+    let _timer = ScopeTimer::new("run_catchup_filter_and_render");
+    info("start catchup filter + mkdocs render demo");
+
+    if config.topics().is_empty() {
+        warn("config has no topics, nothing to do");
+        return;
+    }
+
     let prompts_dir = Path::new(&config.prompts.dir);
 
     let relevance_dimensions = match load_relevance_dimensions(prompts_dir) {
@@ -91,20 +129,19 @@ fn demo_topic_relevance_from_catchup(config: &AppConfig) {
     ));
     let ai_client: Arc<dyn AiClient> = deepseek_client.clone();
 
-    let filter = TopicFilter::new(
-        TOPIC.to_string(),
-        ai_client,
-        &relevance_dimensions,
-        &relevance_template,
-        config.filter.relevance_threshold,
-        config.filter.eval_concurrency,
-    );
-
     let mut crawler = ArxivCrawler::new(
         Duration::from_secs(config.crawler.interval_secs),
         config.crawler.timeout_secs,
         config.crawler.user_agent.as_deref(),
     );
+
+    let target_naive_date = match parse_catchup_naive_date(CATCHUP_DATE) {
+        Ok(v) => v,
+        Err(err) => {
+            error(format!("invalid catchup date '{}': {err}", CATCHUP_DATE));
+            return;
+        }
+    };
 
     let target_date = match parse_catchup_date(CATCHUP_DATE) {
         Ok(v) => v,
@@ -129,37 +166,94 @@ fn demo_topic_relevance_from_catchup(config: &AppConfig) {
     }
 
     info(format!(
-        "evaluating {} entries from catchup {}",
+        "loaded {} entries from catchup {}",
         entries.len(),
         CATCHUP_DATE
     ));
 
-    let mut filtered = filter.entries_filter(entries);
-    if filtered.is_empty() {
-        info("no papers matched the configured relevance threshold");
-    } else {
-        filtered.sort_by(|a, b| {
-            b.1.overall_score
-                .partial_cmp(&a.1.overall_score)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then_with(|| a.0.id.cmp(&b.0.id))
-        });
+    let mut dump = FilterResultsDump {
+        generated_at_utc: Utc::now().to_rfc3339(),
+        catchup_date: CATCHUP_DATE.to_string(),
+        model_name: DEFAULT_MODEL_NAME.to_string(),
+        relevance_threshold: config.filter.relevance_threshold,
+        topics: Vec::new(),
+    };
+    let dump_path = format!("/tmp/filter_results_{}.json", CATCHUP_DATE);
 
+    for topic in config.topics() {
         info(format!(
-            "found {} papers matching topic '{}' (sorted by overall score desc)",
-            filtered.len(),
-            TOPIC
+            "filtering topic '{}' with {} candidate papers",
+            topic.name,
+            entries.len()
         ));
 
-        for (idx, (entry, evaluation)) in filtered.into_iter().enumerate() {
-            info(format!(
-                "rank #{} | id={} | title={}\n{}",
-                idx + 1,
-                entry.id,
-                entry.title,
-                evaluation
-            ));
+        let filter = TopicFilter::new(
+            topic.name.clone(),
+            topic.description.clone(),
+            ai_client.clone(),
+            &relevance_dimensions,
+            &relevance_template,
+            config.filter.relevance_threshold,
+            config.filter.eval_concurrency,
+        );
+
+        let topic_entries = clone_entries(&entries);
+        let filter_results = filter.entries_filter(topic_entries);
+        info(format!(
+            "topic '{}' matched {} papers",
+            topic.name,
+            filter_results.len()
+        ));
+
+        let topic_dump = TopicDump {
+            topic_name: topic.name.clone(),
+            topic_description: topic.description.clone(),
+            total_candidates: entries.len(),
+            matched_count: filter_results.len(),
+            results: filter_results
+                .iter()
+                .map(|(entry, evaluation)| PaperDump {
+                    id: entry.id.clone(),
+                    title: entry.title.clone(),
+                    authors: entry.authors.clone(),
+                    abstract_text: entry.abstract_text.clone(),
+                    overall_score: evaluation.overall_score,
+                    dimensional_scores: evaluation.dimensional_scores.clone(),
+                    dimensional_reasons: evaluation.dimensional_reasons.clone(),
+                })
+                .collect(),
+        };
+        dump.topics.push(topic_dump);
+
+        match render_mkdocs_page(
+            filter_results,
+            &topic.name,
+            &topic.description,
+            target_naive_date,
+            DEFAULT_MODEL_NAME,
+        ) {
+            Ok(page) => {
+                info(format!(
+                    "mkdocs page for topic '{}' on {}:\n{}",
+                    topic.name, CATCHUP_DATE, page
+                ));
+            }
+            Err(err) => {
+                error(format!(
+                    "render mkdocs page failed for topic '{}': {}",
+                    topic.name, err
+                ));
+            }
         }
+    }
+
+    if let Err(err) = write_filter_results_dump(&dump_path, &dump) {
+        error(format!(
+            "write filter results dump failed (path='{}'): {}",
+            dump_path, err
+        ));
+    } else {
+        info(format!("filter results dump written to {}", dump_path));
     }
 
     let metrics = deepseek_client.get_token_metrics();
@@ -173,9 +267,41 @@ fn demo_topic_relevance_from_catchup(config: &AppConfig) {
     ));
 }
 
+fn clone_entries(entries: &[ArxivPaperEntry]) -> Vec<ArxivPaperEntry> {
+    entries
+        .iter()
+        .map(|entry| {
+            ArxivPaperEntry::new(
+                entry.id.clone(),
+                entry.title.clone(),
+                entry.authors.clone(),
+                entry.abstract_text.clone(),
+            )
+        })
+        .collect()
+}
+
+fn write_filter_results_dump(
+    output_path: &str,
+    dump: &FilterResultsDump,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let output = Path::new(output_path);
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let json = serde_json::to_string_pretty(dump)?;
+    fs::write(output, json)?;
+    Ok(())
+}
+
+fn parse_catchup_naive_date(date_text: &str) -> Result<NaiveDate, String> {
+    NaiveDate::parse_from_str(date_text, "%Y-%m-%d")
+        .map_err(|err| format!("invalid format, expected YYYY-MM-DD: {err}"))
+}
+
 fn parse_catchup_date(date_text: &str) -> Result<SystemTime, String> {
-    let date = NaiveDate::parse_from_str(date_text, "%Y-%m-%d")
-        .map_err(|err| format!("invalid format, expected YYYY-MM-DD: {err}"))?;
+    let date = parse_catchup_naive_date(date_text)?;
     let naive = date
         .and_hms_opt(0, 0, 0)
         .ok_or("failed to build datetime at 00:00:00")?;
@@ -192,5 +318,5 @@ fn main() {
         }
     };
 
-    demo_topic_relevance_from_catchup(&config);
+    run_catchup_filter_and_render(&config);
 }

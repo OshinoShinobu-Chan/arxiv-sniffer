@@ -8,6 +8,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 pub struct TopicFilter {
+    /// The display name of the topic.
+    topic_name: String,
+    /// The description of the topic, used for prompt rendering.
     topics: String,
     /// The AI client used to filter the papaers, shared by all filter instances.
     ai_client: Arc<dyn AiClient>,
@@ -33,12 +36,17 @@ pub struct RelevanceEvaluation {
     pub dimensional_reasons: HashMap<String, String>,
     /// key to their display name, for better interpretability
     pub key_to_name: HashMap<String, String>,
+    /// key to their description text for template rendering
+    pub key_to_description: HashMap<String, String>,
+    /// key to their weight for template rendering
+    pub key_to_weight: HashMap<String, f64>,
     /// The overall score
     pub overall_score: f64,
 }
 
 impl TopicFilter {
     pub fn new(
+        topic_name: String,
         topics: String,
         ai_client: Arc<dyn AiClient>,
         relevance_dimensions: &HashMap<String, RelevanceDimension>,
@@ -50,6 +58,7 @@ impl TopicFilter {
             render_relevance_template(relevance_template, &topics, relevance_dimensions);
 
         Self {
+            topic_name,
             topics,
             ai_client,
             relevance_dimensions: relevance_dimensions.clone(),
@@ -86,6 +95,8 @@ impl TopicFilter {
         let mut scores = HashMap::with_capacity(self.relevance_dimensions.len());
         let mut reasons = HashMap::with_capacity(self.relevance_dimensions.len());
         let mut key_to_name = HashMap::with_capacity(self.relevance_dimensions.len());
+        let mut key_to_description = HashMap::with_capacity(self.relevance_dimensions.len());
+        let mut key_to_weight = HashMap::with_capacity(self.relevance_dimensions.len());
         let mut weighted_score_sum = 0.0_f64;
 
         for (key, dimension) in &self.relevance_dimensions {
@@ -117,6 +128,8 @@ impl TopicFilter {
             scores.insert(key.clone(), score);
             reasons.insert(key.clone(), reason);
             key_to_name.insert(key.clone(), dimension.name.clone());
+            key_to_description.insert(key.clone(), dimension.description.clone());
+            key_to_weight.insert(key.clone(), dimension.weight);
             weighted_score_sum += f64::from(score) * dimension.weight;
         }
 
@@ -128,6 +141,8 @@ impl TopicFilter {
             dimensional_scores: scores,
             dimensional_reasons: reasons,
             key_to_name,
+            key_to_description,
+            key_to_weight,
             overall_score,
         })
     }
@@ -278,8 +293,8 @@ fn render_relevance_template(
 
     template
         .replace("{topic}", topic)
-        .replace("{dimonsion_num}", &relevance_dimensions.len().to_string())
-        .replace("{dimonsions}", &dimensions_block)
+        .replace("{dimension_num}", &relevance_dimensions.len().to_string())
+        .replace("{dimensions}", &dimensions_block)
         .replace("{json_output}", &json_output)
 }
 
@@ -338,13 +353,13 @@ fn sorted_dimensions_by_weight(
 fn find_relevance_dimensions_file(
     prompts_dir: &Path,
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let primary = prompts_dir.join("relevance_dimonsions.json");
+    let primary = prompts_dir.join("relevance_dimensions.json");
     if primary.exists() {
         return Ok(primary);
     }
 
     Err(format!(
-        "cannot find relevance dimensions file in '{}' (expected relevance_dimonsions.json or relevance_dimonsion.json)",
+        "cannot find relevance dimensions file in '{}' (expected relevance_dimensions.json or relevance_dimension.json)",
         prompts_dir.display()
     )
     .into())
@@ -365,28 +380,55 @@ fn find_relevance_template_file(prompts_dir: &Path) -> Result<PathBuf, Box<dyn s
 
 impl std::fmt::Display for RelevanceEvaluation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        const TOPIC_TEMPLATE_PATH: &str = "./mkdocs/templates/topic_relevance_template.md";
+        const DIMENSION_TEMPLATE_PATH: &str = "./mkdocs/templates/dimension_template.md";
+
         let mut entries: Vec<_> = self.dimensional_scores.iter().collect();
-        entries.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
+        entries.sort_by(|a, b| a.1.cmp(b.1).then_with(|| a.0.cmp(b.0)));
 
-        writeln!(f, "总体相关性得分: {:.2} / 100", self.overall_score)?;
-        writeln!(
-            f,
-            "评价: {}\n",
-            relevance_comment_by_overall_score(self.overall_score)
-        )?;
+        let topic_template =
+            fs::read_to_string(TOPIC_TEMPLATE_PATH).map_err(|_| std::fmt::Error)?;
+        let dimension_template =
+            fs::read_to_string(DIMENSION_TEMPLATE_PATH).map_err(|_| std::fmt::Error)?;
 
-        for (key, score) in entries {
-            let name = self.key_to_name.get(key).unwrap_or(key).to_string();
-            let reason = self
-                .dimensional_reasons
-                .get(key)
-                .map(String::as_str)
-                .unwrap_or("");
-            writeln!(
-                f,
-                "- {} ({}): {} / 10\n理由：{}\n",
-                name, key, score, reason
-            )?;
+        let dimension_details = entries
+            .into_iter()
+            .map(|(key, score)| {
+                let name = self.key_to_name.get(key).map(String::as_str).unwrap_or(key);
+                let description = self
+                    .key_to_description
+                    .get(key)
+                    .map(String::as_str)
+                    .unwrap_or("");
+                let weight = self.key_to_weight.get(key).copied().unwrap_or(0.0);
+                let reason = self
+                    .dimensional_reasons
+                    .get(key)
+                    .map(String::as_str)
+                    .unwrap_or("");
+
+                dimension_template
+                    .replace("{name}", name)
+                    .replace("{description}", description)
+                    .replace("{weight}", &format!("{weight:.3}"))
+                    .replace("{score}", &score.to_string())
+                    .replace("{reason}", reason)
+            })
+            .collect::<Vec<_>>()
+            .join("\n\n");
+
+        let rendered = topic_template
+            .replace("{dimension_details}", &dimension_details)
+            .replace("{overall_score}", &format!("{:.2}", self.overall_score))
+            .replace(
+                "{comment_text}",
+                relevance_comment_by_overall_score(self.overall_score),
+            );
+
+        write!(f, "{}", rendered)?;
+
+        if !rendered.ends_with('\n') {
+            writeln!(f)?;
         }
 
         Ok(())

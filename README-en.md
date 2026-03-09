@@ -4,7 +4,7 @@
 
 ## Introduction
 
-This project is a Large Language Model (LLM)-based program designed to filter and summarize papers from the arXiv catchup (arXiv's daily subscription) emails.
+This project is a Large Language Model (LLM)-based program designed to filter and summarize papers from the arXiv catchup (arXiv's daily subscription) page.
 
 ## Current Features
 
@@ -20,7 +20,7 @@ This project provides functionality to crawl all **new submission** paper entrie
 
 This project offers paper filtering capabilities based on LLMs. It filters papers relevant to your specified topics by analyzing their titles and abstracts.
 
-The specific filtering method involves designing a multi-dimensional relevance scale ([example](./prompts/relevance_dimonsions.json)). Information for each paper is inserted into a prompt template ([example](./prompts/relevance_template.txt)) and sent to an LLM via its API. The LLM scores the paper according to the scale, and a total score is calculated. If the score exceeds a certain threshold, the paper is considered relevant to your topic of interest.
+The specific filtering method involves designing a multi-dimensional relevance scale ([example](./prompts/relevance_dimensions.json)). Information for each paper is inserted into a prompt template ([example](./prompts/relevance_template.txt)) and sent to an LLM via its API. The LLM scores the paper according to the scale, and a total score is calculated. If the score exceeds a certain threshold, the paper is considered relevant to your topic of interest.
 
 Additionally, the LLM is prompted to provide reasoning for its scores on each dimension for your reference.
 

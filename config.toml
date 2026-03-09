@@ -10,6 +10,10 @@ dir = "prompts"
 relevance_threshold = 85
 eval_concurrency = 16
 
+[[topics]]
+name = "agentic-ai"
+description = "多个Agent相互协作的Agentic AI系统有关的研究"
+
 [ai]
 
 [ai.models."deepseek-chat"]

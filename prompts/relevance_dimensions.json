@@ -2,7 +2,7 @@
     "dimensional_scores": {
         "tech_semantic_match": {
             "weight": 0.5,
-            "name": "技术重重合度",
+            "name": "技术术语的重合度",
             "description": "论文中使用的具体技术术语、模型名称、数据集、算法编号与主题词的匹配程度。论文是否直接讨论了与研究主题相关的核心技术？"
         },
         "method_relevance": {

@@ -13,7 +13,15 @@ pub struct AppConfig {
     #[serde(default)]
     pub filter: FilterConfig,
     #[serde(default)]
+    pub topics: Vec<TopicConfig>,
+    #[serde(default)]
     pub ai: AiConfig,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct TopicConfig {
+    pub name: String,
+    pub description: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -80,5 +88,21 @@ impl AppConfig {
 
     pub fn ai_model_config(&self, model_name: &str) -> Option<&AiModelConfig> {
         self.ai.models.get(model_name)
+    }
+
+    pub fn topics(&self) -> &[TopicConfig] {
+        &self.topics
+    }
+
+    pub fn topic_by_name(&self, topic_name: &str) -> Option<&TopicConfig> {
+        self.topics.iter().find(|topic| topic.name == topic_name)
+    }
+
+    pub fn topic_descriptions_text(&self, separator: &str) -> String {
+        self.topics
+            .iter()
+            .map(|topic| topic.description.as_str())
+            .collect::<Vec<_>>()
+            .join(separator)
     }
 }
