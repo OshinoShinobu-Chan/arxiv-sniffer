@@ -1,6 +1,8 @@
 //! This module is used to filter the arXiv papers based on the given topics.
 use crate::ai_api::AiClient;
 use crate::arxiv::ArxivPaperEntry;
+use crate::r#const::filter::WEIGHT_SUM_EPSILON;
+use crate::r#const::mkdocs::{DIMENSION_TEMPLATE_PATH, TOPIC_RELEVANCE_TEMPLATE_PATH};
 use crate::{debug, warn};
 use std::collections::HashMap;
 use std::fs;
@@ -8,10 +10,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 pub struct TopicFilter {
-    /// The display name of the topic.
-    topic_name: String,
-    /// The description of the topic, used for prompt rendering.
-    topics: String,
     /// The AI client used to filter the papaers, shared by all filter instances.
     ai_client: Arc<dyn AiClient>,
     relevance_dimensions: HashMap<String, RelevanceDimension>,
@@ -46,7 +44,6 @@ pub struct RelevanceEvaluation {
 
 impl TopicFilter {
     pub fn new(
-        topic_name: String,
         topics: String,
         ai_client: Arc<dyn AiClient>,
         relevance_dimensions: &HashMap<String, RelevanceDimension>,
@@ -58,22 +55,12 @@ impl TopicFilter {
             render_relevance_template(relevance_template, &topics, relevance_dimensions);
 
         Self {
-            topic_name,
-            topics,
             ai_client,
             relevance_dimensions: relevance_dimensions.clone(),
             relevance_prompt_template: rendered_template,
             threshold,
             eval_concurrency,
         }
-    }
-
-    pub fn relevance_dimensions(&self) -> &HashMap<String, RelevanceDimension> {
-        &self.relevance_dimensions
-    }
-
-    pub fn relevance_prompt_template(&self) -> &str {
-        &self.relevance_prompt_template
     }
 
     pub fn check_relevance(
@@ -269,8 +256,7 @@ pub fn load_relevance_dimensions(
         );
     }
 
-    const EPSILON: f64 = 1e-9;
-    if (sum - 1.0).abs() > EPSILON {
+    if (sum - 1.0).abs() > WEIGHT_SUM_EPSILON {
         return Err(format!("dimension weights must sum to 1.0, got {sum}").into());
     }
 
@@ -380,14 +366,19 @@ fn find_relevance_template_file(prompts_dir: &Path) -> Result<PathBuf, Box<dyn s
 
 impl std::fmt::Display for RelevanceEvaluation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        const TOPIC_TEMPLATE_PATH: &str = "./mkdocs/templates/topic_relevance_template.md";
-        const DIMENSION_TEMPLATE_PATH: &str = "./mkdocs/templates/dimension_template.md";
-
         let mut entries: Vec<_> = self.dimensional_scores.iter().collect();
-        entries.sort_by(|a, b| a.1.cmp(b.1).then_with(|| a.0.cmp(b.0)));
+        entries.sort_by(|a, b| {
+            let a_weight = self.key_to_weight.get(a.0).copied().unwrap_or(0.0);
+            let b_weight = self.key_to_weight.get(b.0).copied().unwrap_or(0.0);
+
+            b_weight
+                .partial_cmp(&a_weight)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| a.0.cmp(b.0))
+        });
 
         let topic_template =
-            fs::read_to_string(TOPIC_TEMPLATE_PATH).map_err(|_| std::fmt::Error)?;
+            fs::read_to_string(TOPIC_RELEVANCE_TEMPLATE_PATH).map_err(|_| std::fmt::Error)?;
         let dimension_template =
             fs::read_to_string(DIMENSION_TEMPLATE_PATH).map_err(|_| std::fmt::Error)?;
 

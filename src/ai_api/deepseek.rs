@@ -9,8 +9,6 @@ use super::{AiClient, TokenMetrics};
 use crate::config::AiModelConfig;
 use crate::config::ai::deepseek::DeepSeekRequestConfig;
 
-const DEEPSEEK_CHAT_COMPLETIONS_URL: &str = "https://api.deepseek.com/chat/completions";
-
 #[derive(Debug)]
 pub enum DeepSeekError {
     Http(reqwest::Error),
@@ -54,8 +52,7 @@ pub struct DeepSeekModelConfig {
 }
 
 impl DeepSeekClient {
-    pub fn new(api_key: impl Into<String>) -> Self {
-        let model_config = Self::default_model_config();
+    pub fn new(api_key: impl Into<String>, model_config: DeepSeekModelConfig) -> Self {
         Self {
             http: Self::build_http_client(model_config.timeout_secs),
             api_key: api_key.into(),
@@ -63,24 +60,6 @@ impl DeepSeekClient {
             token_metrics: Arc::new(Mutex::new(TokenMetrics::new())),
         }
     }
-
-    pub fn new_with_model_config(
-        api_key: impl Into<String>,
-        model_config: DeepSeekModelConfig,
-    ) -> Self {
-        Self {
-            http: Self::build_http_client(model_config.timeout_secs),
-            api_key: api_key.into(),
-            model_config,
-            token_metrics: Arc::new(Mutex::new(TokenMetrics::new())),
-        }
-    }
-
-    pub fn with_endpoint(mut self, endpoint: impl Into<String>) -> Self {
-        self.model_config.endpoint = endpoint.into();
-        self
-    }
-
     /// Send a chat completion request to DeepSeek and return the raw JSON response.
     pub fn chat_completions(
         &self,
@@ -148,15 +127,6 @@ impl DeepSeekClient {
             .ok_or_else(|| {
                 "invalid deepseek response: missing choices[0].message.content".to_string()
             })
-    }
-
-    fn default_model_config() -> DeepSeekModelConfig {
-        DeepSeekModelConfig {
-            endpoint: DEEPSEEK_CHAT_COMPLETIONS_URL.to_string(),
-            system_prompt: "You are a helpful assistant".to_string(),
-            timeout_secs: 60,
-            request: DeepSeekRequestConfig::default(),
-        }
     }
 
     pub fn from_ai_model_config(

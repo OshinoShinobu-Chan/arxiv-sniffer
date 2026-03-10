@@ -21,6 +21,7 @@ impl Default for AiConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct AiModelConfig {
     #[serde(default = "default_provider")]
     pub provider: String,

@@ -1,0 +1,103 @@
+name: Auto Update Docs And Build Site
+
+on:
+	workflow_dispatch:
+	schedule:
+		- cron: "30 0 * * *"
+
+permissions:
+	contents: write
+
+jobs:
+	update-and-build:
+		runs-on: ubuntu-latest
+
+		steps:
+			- name: Checkout repository
+				uses: actions/checkout@v4
+				with:
+					fetch-depth: 0
+
+			- name: Setup Rust
+				uses: dtolnay/rust-toolchain@stable
+
+			- name: Setup Python
+				uses: actions/setup-python@v5
+				with:
+					python-version: "3.11"
+
+			- name: Install MkDocs dependencies
+				run: |
+					python -m pip install --upgrade pip
+					pip install mkdocs mkdocs-material
+
+			- name: Prepare mkdocs branch
+				shell: bash
+				run: |
+					set -euo pipefail
+					git fetch origin --prune
+
+					if git ls-remote --exit-code --heads origin mkdocs >/dev/null 2>&1; then
+						git checkout -B mkdocs origin/mkdocs
+					else
+						BASE_BRANCH="master"
+						if ! git ls-remote --exit-code --heads origin "${BASE_BRANCH}" >/dev/null 2>&1; then
+							BASE_BRANCH="main"
+						fi
+						git checkout -B mkdocs "origin/${BASE_BRANCH}"
+					fi
+
+			- name: Run generator
+				env:
+					DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+				run: cargo run
+
+			- name: Commit and push mkdocs branch changes
+				shell: bash
+				run: |
+					set -euo pipefail
+					git config user.name "github-actions[bot]"
+					git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+					if [[ -n "$(git status --porcelain)" ]]; then
+						git add -A
+						git commit -m "chore: auto update mkdocs content"
+						git push origin mkdocs
+					else
+						echo "No changes to commit on mkdocs branch"
+					fi
+
+			- name: Build MkDocs site
+				run: |
+					cd mkdocs
+					mkdocs build --clean
+
+			- name: Publish site branch
+				shell: bash
+				run: |
+					set -euo pipefail
+					git fetch origin --prune
+
+					rm -rf .site-branch
+					git worktree add .site-branch --detach
+
+					cd .site-branch
+					if git ls-remote --exit-code --heads origin site >/dev/null 2>&1; then
+						git checkout -B site origin/site
+					else
+						git checkout --orphan site
+						find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+					fi
+
+					find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+					cp -r ../mkdocs/site/. .
+					touch .nojekyll
+
+					git add -A
+					if git diff --cached --quiet; then
+						echo "No changes to commit on site branch"
+					else
+						git commit -m "chore: auto publish mkdocs site"
+						git push origin site
+					fi
+

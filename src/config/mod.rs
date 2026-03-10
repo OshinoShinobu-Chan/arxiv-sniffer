@@ -99,16 +99,4 @@ impl AppConfig {
     pub fn topics(&self) -> &[TopicConfig] {
         &self.topics
     }
-
-    pub fn topic_by_name(&self, topic_name: &str) -> Option<&TopicConfig> {
-        self.topics.iter().find(|topic| topic.name == topic_name)
-    }
-
-    pub fn topic_descriptions_text(&self, separator: &str) -> String {
-        self.topics
-            .iter()
-            .map(|topic| topic.description.as_str())
-            .collect::<Vec<_>>()
-            .join(separator)
-    }
 }

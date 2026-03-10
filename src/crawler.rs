@@ -1,14 +1,12 @@
 //! This is the crawler module to crawl arXiv and get the metadata of papers.
 
 use crate::arxiv::ArxivPaperEntry;
+use crate::r#const::crawler::{ARXIV_CATCHUP_URL_TEMPLATE, DEFAULT_USER_AGENT};
 use crate::{debug, error, info, warn};
 use scraper::node::Node;
 use scraper::{Html, Selector};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
-
-const ARXIV_CATCHUP_URL_TEMPLATE: &str = "https://arxiv.org/catchup/{subject_code}/{date}?abs=True";
-const DEFAULT_USER_AGENT: &str = "arxiv-sniffer/0.1";
 
 /// This struct is the crawler to crawl arXiv and get the metadata of papers.
 pub struct ArxivCrawler {

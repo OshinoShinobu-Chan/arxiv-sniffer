@@ -9,11 +9,15 @@ dir = "prompts"
 
 [filter]
 relevance_threshold = 85
-eval_concurrency = 16
+eval_concurrency = 4
 
 [[topics]]
-name = "agentic-ai"
-description = "多个Agent相互协作的Agentic AI系统有关的研究"
+name = "Agentic ai"
+description = "对于多个Agent相互协作的Agentic AI系统中系统层面有关问题的研究，如系统延迟、系统架构设计等。"
+
+[[topics]]
+name = "RLHF/RLVF"
+description = "大语言模型(LLM)的强化学习后训练(post-train)系统(RLHF/RLVF)中，系统层面性能优化方法的相关研究，包括对于系统延迟、吞吐量和计算资源利用率等方面的优化。"
 
 [ai]
 

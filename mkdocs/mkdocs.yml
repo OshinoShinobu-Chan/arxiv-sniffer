@@ -5,7 +5,7 @@ theme:
   language: zh
   name: material
   features:
-    - navigation.tabs
+  - navigation.tabs
   palette:
   - accent: light blue
     media: '(prefers-color-scheme: light)'
@@ -22,4 +22,4 @@ theme:
       icon: material/weather-night
       name: Switch to light mode
 nav:
-  - 说明: readme.md
+- 说明: readme.md

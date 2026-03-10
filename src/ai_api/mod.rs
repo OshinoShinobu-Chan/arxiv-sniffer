@@ -34,23 +34,10 @@ impl TokenMetrics {
             total_tokens: 0,
         }
     }
-
-    pub fn from_values(
-        completion_tokens: usize,
-        prompt_cache_hit_tokens: usize,
-        prompt_cache_miss_tokens: usize,
-    ) -> Self {
-        Self {
-            completion_tokens,
-            reasoning_tokens: 0,
-            prompt_cache_hit_tokens,
-            prompt_cache_miss_tokens,
-            total_tokens: completion_tokens + prompt_cache_hit_tokens + prompt_cache_miss_tokens,
-        }
-    }
 }
 
 pub trait AiClient: Send + Sync {
+    #[allow(dead_code)]
     /// Send a chat completion request using plain user prompt text,
     /// and return the assistant text response.
     fn chat_completions(&self, request_string: String) -> Result<String, String>;
