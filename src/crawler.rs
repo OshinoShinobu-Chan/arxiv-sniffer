@@ -7,13 +7,15 @@ use scraper::{Html, Selector};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 
-const ARXIV_CATCHUP_URL_TEMPLATE: &str = "https://arxiv.org/catchup/cs/{date}?abs=True";
+const ARXIV_CATCHUP_URL_TEMPLATE: &str = "https://arxiv.org/catchup/{subject_code}/{date}?abs=True";
 const DEFAULT_USER_AGENT: &str = "arxiv-sniffer/0.1";
 
 /// This struct is the crawler to crawl arXiv and get the metadata of papers.
 pub struct ArxivCrawler {
     /// Synchronous HTTP client used to fetch arXiv pages.
     client: reqwest::blocking::Client,
+    /// arXiv catchup subject code (e.g. "cs", "math").
+    subject_code: String,
     /// Minimal waiting time between two crawl operations.
     interval: Duration,
     /// Start time of the last crawl operation.
@@ -24,8 +26,14 @@ impl ArxivCrawler {
     /// Create a new Crawler.
     ///
     /// If `user_agent` is `None`, a default user-agent string is used.
-    pub fn new(interval: Duration, timeout_secs: u64, user_agent: Option<&str>) -> Self {
+    pub fn new(
+        interval: Duration,
+        timeout_secs: u64,
+        subject_code: &str,
+        user_agent: Option<&str>,
+    ) -> Self {
         let user_agent = user_agent.unwrap_or(DEFAULT_USER_AGENT);
+        let normalized_subject_code = subject_code.to_lowercase();
         let client = reqwest::blocking::Client::builder()
             .user_agent(user_agent)
             .timeout(Duration::from_secs(timeout_secs))
@@ -34,6 +42,7 @@ impl ArxivCrawler {
 
         Self {
             client,
+            subject_code: normalized_subject_code,
             interval,
             last_at: None,
         }
@@ -67,10 +76,13 @@ impl ArxivCrawler {
 
     /// Crawl arXiv and get raw page content of catchup with given date.
     pub fn crawl_catchup_raw(&mut self, date: SystemTime) -> Result<String, reqwest::Error> {
+        let subject_code = self.subject_code.clone();
         self.run_crawl_operation(|client| {
             let date_text = Self::format_catchup_date(date);
             let encoded_date = urlencoding::encode(&date_text);
-            let url = ARXIV_CATCHUP_URL_TEMPLATE.replace("{date}", encoded_date.as_ref());
+            let url = ARXIV_CATCHUP_URL_TEMPLATE
+                .replace("{subject_code}", subject_code.as_str())
+                .replace("{date}", encoded_date.as_ref());
             debug(format!("crawl_catchup_raw request url={}", url));
 
             let result = client

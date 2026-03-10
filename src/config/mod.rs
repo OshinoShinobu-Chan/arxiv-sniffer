@@ -60,11 +60,17 @@ pub struct CrawlerConfig {
     pub interval_secs: u64,
     #[serde(default = "default_crawler_timeout_secs")]
     pub timeout_secs: u64,
+    #[serde(default = "default_crawler_subject_code")]
+    pub subject_code: String,
     pub user_agent: Option<String>,
 }
 
 fn default_crawler_timeout_secs() -> u64 {
     30
+}
+
+fn default_crawler_subject_code() -> String {
+    "cs".to_string()
 }
 
 fn default_prompts_dir() -> String {

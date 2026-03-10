@@ -132,6 +132,7 @@ fn run_catchup_filter_and_render(config: &AppConfig) {
     let mut crawler = ArxivCrawler::new(
         Duration::from_secs(config.crawler.interval_secs),
         config.crawler.timeout_secs,
+        &config.crawler.subject_code,
         config.crawler.user_agent.as_deref(),
     );
 
