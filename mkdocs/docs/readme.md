@@ -25,6 +25,7 @@
 - `{date}`: 页面对应的日期，格式为YYYY-MM-DD(例如：2026-03-06)。
 - `{topic}`：页面对应的主题的描述。
 - `{papers}`：每篇论文的总结根据`paper_template.md`生成之后使用空行分隔形成的字符串。
+- `{metrics}`：生成当前页面的统计信息报告，根据`metrics_template.md`生成之后填入。
 - `{yesterday_link}`：前一天的论文总结页面的路径。总是会尝试拼接形成一个相对路径。如果前一天的页面不存在的话将会是一个无效的路径。
 - `{tomorrow_link}`：后一天的论文总结页面的路径。同样，如果后一天的页面不存在的话，将会是一个无效的路径。
 
@@ -50,3 +51,13 @@
 - `{weight}`：当前dimension的权重。在`/prompts/relevance_dimension.json`中配置。
 - `{score}`：当前dimension的得分。由LLM生成。
 - `{reason}`：当前dimension打分的理由。由LLM生成。
+
+### metrics_template.md
+
+- `{AI_name}`：使用的AI模型的名称，在配置文件中设置。
+- `{prompt_cache_miss_tokens}`：提示词中缓存未命中的tokens用量。
+- `{prompt_cache_hit_tokens}`：提示词中缓存命中的tokens用量。
+- `{completion_tokens}`：返回的补全内容的token用量。
+- `{reasoning_tokens}`：深度思考模式下，输出的思维链的tokens用量。
+- `{total_tokens}`：总计的tokens用量。
+- `{time}`：整个页面生成的用时统计。

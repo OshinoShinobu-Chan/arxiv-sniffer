@@ -6,6 +6,8 @@
 
 {papers}
 
+{metrics}
+
 << [昨天的论文总结]({yesterday_link})
 
 \>\> [明天的论文总结]({tomorrow_link})
