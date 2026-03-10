@@ -37,20 +37,32 @@ jobs:
           set -euo pipefail
           git fetch origin --prune
 
+          BASE_BRANCH="master"
+          if ! git ls-remote --exit-code --heads origin "${BASE_BRANCH}" >/dev/null 2>&1; then
+            BASE_BRANCH="main"
+          fi
+
           if git ls-remote --exit-code --heads origin mkdocs >/dev/null 2>&1; then
-            git checkout -B mkdocs origin/mkdocs
-          else
-            BASE_BRANCH="master"
-            if ! git ls-remote --exit-code --heads origin "${BASE_BRANCH}" >/dev/null 2>&1; then
-              BASE_BRANCH="main"
+            git checkout -B mkdocs "origin/${BASE_BRANCH}"
+            if git ls-tree -d --name-only origin/mkdocs mkdocs >/dev/null 2>&1; then
+              git checkout origin/mkdocs -- mkdocs
             fi
+          else
             git checkout -B mkdocs "origin/${BASE_BRANCH}"
           fi
 
       - name: Run generator
         env:
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-        run: cargo run
+          DEEPSEEK_API_KEY_FROM_SECRET: ${{ secrets.DEEPSEEK_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEEPSEEK_API_KEY="${DEEPSEEK_API_KEY_FROM_SECRET}"
+          if [[ -z "${DEEPSEEK_API_KEY}" ]]; then
+            echo "DEEPSEEK_API_KEY is empty. Please configure repository secret DEEPSEEK_API_KEY."
+            exit 1
+          fi
+          cargo run
 
       - name: Commit and push mkdocs branch changes
         shell: bash
