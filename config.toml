@@ -9,7 +9,7 @@ dir = "prompts"
 
 [filter]
 relevance_threshold = 85
-eval_concurrency = 4
+eval_concurrency = 8
 
 [[topics]]
 name = "Agentic ai"
