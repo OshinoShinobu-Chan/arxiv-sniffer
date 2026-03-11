@@ -36,7 +36,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install mkdocs mkdocs-material
 
-      - name: Prepare mkdocs branch
+      - name: Sync mkdocs branch content into master workspace
         shell: bash
         run: |
           set -euo pipefail
@@ -47,13 +47,19 @@ jobs:
             BASE_BRANCH="main"
           fi
 
+          git checkout -B "${BASE_BRANCH}" "origin/${BASE_BRANCH}"
+
           if git ls-remote --exit-code --heads origin mkdocs >/dev/null 2>&1; then
-            git checkout -B mkdocs "origin/${BASE_BRANCH}"
-            if git ls-tree -d --name-only origin/mkdocs mkdocs >/dev/null 2>&1; then
-              git checkout origin/mkdocs -- mkdocs
-            fi
+            TMP_MKDOCS_DIR="$(mktemp -d)"
+            git archive --format=tar origin/mkdocs | tar -xf - -C "${TMP_MKDOCS_DIR}"
+
+            rm -rf mkdocs
+            mkdir -p mkdocs
+            rsync -a --delete "${TMP_MKDOCS_DIR}/" mkdocs/
+
+            rm -rf "${TMP_MKDOCS_DIR}"
           else
-            git checkout -B mkdocs "origin/${BASE_BRANCH}"
+            echo "mkdocs branch does not exist yet, use ${BASE_BRANCH}/mkdocs as initial content"
           fi
 
       - name: Run generator
@@ -76,17 +82,32 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          if [[ -n "$(git status --porcelain)" ]]; then
+          rm -rf .mkdocs-branch
+          git worktree add .mkdocs-branch --detach
+
+          cd .mkdocs-branch
+          if git ls-remote --exit-code --heads origin mkdocs >/dev/null 2>&1; then
+            git checkout -B mkdocs origin/mkdocs
+          else
+            git checkout --orphan mkdocs
+            find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          fi
+
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -r ../mkdocs/. .
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit on mkdocs branch"
+          else
             git add -A
             git commit -m "chore: auto update mkdocs content"
             git push origin mkdocs
-          else
-            echo "No changes to commit on mkdocs branch"
           fi
 
       - name: Build MkDocs site
         run: |
-          cd mkdocs
+          cd .mkdocs-branch
           mkdocs build --clean
 
       - name: Publish site branch
@@ -107,7 +128,7 @@ jobs:
           fi
 
           find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          cp -r ../mkdocs/site/. .
+          cp -r ../.mkdocs-branch/site/. .
           touch .nojekyll
 
           git add -A
