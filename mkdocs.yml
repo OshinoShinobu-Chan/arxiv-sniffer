@@ -1,0 +1,27 @@
+site_name: arXiv Sniffer Site
+theme:
+  font:
+    code: Fira Mono
+  language: zh
+  name: material
+  features:
+  - navigation.tabs
+  palette:
+  - accent: light blue
+    media: '(prefers-color-scheme: light)'
+    primary: white
+    scheme: default
+    toggle:
+      icon: material/weather-sunny
+      name: Switch to dark mode
+  - accent: light blue
+    media: '(prefers-color-scheme: dark)'
+    primary: light grey
+    scheme: slate
+    toggle:
+      icon: material/weather-night
+      name: Switch to light mode
+nav:
+- 说明: readme.md
+- Agentic ai: Agentic_ai/2026-03-10.md
+- RLHF/RLVF: RLHFRLVF/2026-03-10.md
