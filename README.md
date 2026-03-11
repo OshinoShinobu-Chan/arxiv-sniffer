@@ -113,21 +113,47 @@
 
 ![Github secrets示意图](./readme_pic/github_secrets.png)
 
-在如下的界面中点击`Manage environment secrets`按钮。
+在如下的界面中点击`New repository secret`按钮。
 
 ![Github secrets界面示意图](./readme_pic/manage_secrets.png)
 
-然后点击右上角的`New environment`创建一个环境。其他设置不需要修改，点击下图所示的`Add environment secret`按钮。
+然后在下面界面中`Name`填入"DEEPSEEK_API_KEY"（需要完全一致），`Secret`里面就把你的DeepSeek API 密钥粘贴进去。最后点击`Add secret`就行了。
 
-![Github add environment界面示意图](./readme_pic/add_environment.png)
-
-然后在类似下图的弹出的窗口中，上方填入一个任意的名称，下方的`Value`中粘贴你的密钥。DeepSeek的密钥应该是一个类似`sk-xxx`的一串文字。最后点击`Add secret`就可以了。
-
-![Github add secret界面示意图](./readme_pic/add_secret.png)
+![new secret界面示意图](./readme_pic/new_secret.png)
 
 ### 3. 配置Github Action
 
-TBC
+首先，你需要点击你复制的项目上方中间的`Actions`按钮。然后应该会出现下面这个界面。点击界面中间的绿色按钮。
+
+![Actions界面示意图](./readme_pic/workflow.png)
+
+之后，你的页面左边应该会出现一个workflow，但是它应该是`Disabled`的。你需要点击这个workflow然后选择`Enable workflow`来启用它。这个任务就会每天定时启动了。
+
+![workflow界面示意图](./readme_pic/enable_workflow.png)
+
+### 4. 创建site branch
+
+最后，我们需要一点配置来将每天抓取筛选得到的结果自动部署到GitHub Page上。在这之前还需要个前置操作。回到刚才的`Code`界面，然后点击下图所示的地方。
+
+![branch示意图](./readme_pic/branch.png)
+
+然后你点击界面右上角的`New branch`进入创建新branch的界面。如下图，你在上面的`New branch name`中填入`site`(需要完全一致)，然后点击`Create new branch`就完成了
+
+![new branch示意图](./readme_pic/new_branch.png)
+
+### 5. 配置GitHub Page
+
+这是最后一步，配置GitHub Page来自动部署site branch。首先，你需要点击界面上方的`Settings`然后点击左侧的`Pages`(上面有相关示意图，我就不再放图了)。然后你就会进入类似下面的这个界面，点击中间`Branch`那一栏的下拉菜单，选中`site`，然后点击`save`，就完成了。
+
+![Github Pages示意图](./readme_pic/github_pages.png)
+
+等待页面的自动部署完成，你的`Pages`界面上应该就会出现下面这个栏目，点击`Visit site`就可以访问属于你自己的网页了。当然，现在这个网站上应该只会显示目前这个README的内容。等第一天到时更新之后，这个网站的页面就会变成[示例](https://oshinoshinobu-chan.github.io/arxiv-sniffer/)中的这个样子了。
+
+![visit page示意图](./readme_pic/visit_page.png)
+
+如果你想立即看到效果，也可以手动启动一次本项目。点击刚才的`Actions`界面，从左侧选择到`Auto Update Docs And Build Site`这一项(此时，你这里应该有两项，另一项是用来自动部署GitHub Page的)。然后在上方会出现类似下图的界面。点击`Run workflow`的下拉菜单，然后直接点击绿色的`Run workflow`即可手动出发一次本项目。正常情况下，在等待一段时间之后(时间跟你订阅的topic数量有关，一般至少20min)，下面出现图中这种绿色对钩就说明运行成功了。这时，你就可以去查看刚才的GitHub page网页了(可能需要刷新一下)。
+
+![run workflow示意图](./readme_pic/run_workflow.png)
 
 ## 如何自定义自己的项目
 
