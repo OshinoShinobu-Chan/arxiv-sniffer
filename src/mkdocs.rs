@@ -58,11 +58,11 @@ pub fn render_mkdocs_page(
         .replace("{metrics}", &metrics)
         .replace(
             "{yesterday_link}",
-            &mkdocs_topic_summary_page_path(topic_name, yesterday),
+            &mkdocs_topic_summary_page_site_path(topic_name, yesterday),
         )
         .replace(
             "{tomorrow_link}",
-            &mkdocs_topic_summary_page_path(topic_name, tomorrow),
+            &mkdocs_topic_summary_page_site_path(topic_name, tomorrow),
         );
 
     Ok(rendered)
@@ -118,6 +118,14 @@ fn mkdocs_topic_summary_page_path(topic_name: &str, date: NaiveDate) -> String {
         safe_topic_name,
         date.format("%Y-%m-%d")
     )
+}
+
+/// Build the site path for one topic summary page, without `.md` suffix
+///
+/// Path format: `{topic_name}/{date}`
+pub fn mkdocs_topic_summary_page_site_path(topic_name: &str, date: NaiveDate) -> String {
+    let safe_topic_name = sanitize_topic_name_for_path(topic_name);
+    format!("{}/{}", safe_topic_name, date.format("%Y-%m-%d"))
 }
 
 /// Build a markdown section using `metrics_template.md``
