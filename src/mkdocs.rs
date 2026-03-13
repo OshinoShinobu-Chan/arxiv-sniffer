@@ -12,7 +12,6 @@ use std::time::Duration;
 /// Render one topic page by filling `page_template.md` and `paper_template.md`.
 pub fn render_mkdocs_page(
     filter_results: Vec<(ArxivPaperEntry, RelevanceEvaluation)>,
-    topic_name: &str,
     topic_description: &str,
     date: NaiveDate,
     ai_name: &str,
@@ -58,11 +57,11 @@ pub fn render_mkdocs_page(
         .replace("{metrics}", &metrics)
         .replace(
             "{yesterday_link}",
-            &mkdocs_topic_summary_page_site_path(topic_name, yesterday),
+            &format!("./{}.md", &yesterday.format("%Y-%m-%d").to_string()),
         )
         .replace(
             "{tomorrow_link}",
-            &mkdocs_topic_summary_page_site_path(topic_name, tomorrow),
+            &format!("./{}.md", &tomorrow.format("%Y-%m-%d").to_string())
         );
 
     Ok(rendered)
@@ -118,14 +117,6 @@ fn mkdocs_topic_summary_page_path(topic_name: &str, date: NaiveDate) -> String {
         safe_topic_name,
         date.format("%Y-%m-%d")
     )
-}
-
-/// Build the site path for one topic summary page, without `.md` suffix
-///
-/// Path format: `{topic_name}/{date}`
-pub fn mkdocs_topic_summary_page_site_path(topic_name: &str, date: NaiveDate) -> String {
-    let safe_topic_name = sanitize_topic_name_for_path(topic_name);
-    format!("{}/{}", safe_topic_name, date.format("%Y-%m-%d"))
 }
 
 /// Build a markdown section using `metrics_template.md``
@@ -210,7 +201,6 @@ pub fn create_mkdocs_page(
     create_topic_folder(topic_name)?;
     let rendered = render_mkdocs_page(
         filter_results,
-        topic_name,
         topic_description,
         date,
         ai_name,
