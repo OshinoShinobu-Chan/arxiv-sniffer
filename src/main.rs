@@ -9,14 +9,14 @@ mod mkdocs;
 
 pub use logger::{debug, error, info, warn};
 
-use crate::ai_api::AiClient;
 use crate::ai_api::deepseek::DeepSeekClient;
+use crate::ai_api::AiClient;
 use crate::arxiv::ArxivPaperEntry;
 use crate::config::AppConfig;
-use crate::r#const::app::{DEEPSEEK_API_KEY_ENV, DEFAULT_MODEL_NAME};
 use crate::crawler::ArxivCrawler;
-use crate::filter::{TopicFilter, load_relevance_dimensions, load_relevance_template};
+use crate::filter::{load_relevance_dimensions, load_relevance_template, TopicFilter};
 use crate::mkdocs::{create_mkdocs_page, sanitize_topic_name_for_path};
+use crate::r#const::app::{DEEPSEEK_API_KEY_ENV, DEFAULT_MODEL_NAME};
 use chrono::{DateTime, Duration as ChronoDuration, NaiveDate, Utc};
 use std::path::Path;
 use std::sync::Arc;
@@ -99,7 +99,6 @@ fn run_app(config: &AppConfig) {
     let entries = crawler.parse_paper_entries(&raw);
     if entries.is_empty() {
         warn("catchup contains no entries");
-        return;
     }
 
     info(format!("loaded {} entries from catchup", entries.len()));

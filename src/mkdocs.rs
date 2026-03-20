@@ -2,8 +2,8 @@
 
 use crate::ai_api::TokenMetrics;
 use crate::arxiv::ArxivPaperEntry;
-use crate::r#const::mkdocs::{METRICS_TEMPLATE_PATH, PAGE_TEMPLATE_PATH, PAPER_TEMPLATE_PATH};
 use crate::filter::RelevanceEvaluation;
+use crate::r#const::mkdocs::{METRICS_TEMPLATE_PATH, PAGE_TEMPLATE_PATH, PAPER_TEMPLATE_PATH};
 use chrono::{Duration as ChronoDuration, NaiveDate};
 use std::fs;
 use std::path::Path;
@@ -61,7 +61,7 @@ pub fn render_mkdocs_page(
         )
         .replace(
             "{tomorrow_link}",
-            &format!("./{}.md", &tomorrow.format("%Y-%m-%d").to_string())
+            &format!("./{}.md", &tomorrow.format("%Y-%m-%d").to_string()),
         );
 
     Ok(rendered)

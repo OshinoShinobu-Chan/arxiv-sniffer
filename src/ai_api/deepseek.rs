@@ -6,8 +6,8 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use super::{AiClient, TokenMetrics};
-use crate::config::AiModelConfig;
 use crate::config::ai::deepseek::DeepSeekRequestConfig;
+use crate::config::AiModelConfig;
 
 #[derive(Debug)]
 pub enum DeepSeekError {
